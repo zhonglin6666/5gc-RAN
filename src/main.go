@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"strings"
@@ -294,7 +295,8 @@ func (r *ran) setupN3Tunnel(ctx context.Context) {
 		return
 	}
 
-	tun, err := addTunnel("gtp-gnb")
+	dev := fmt.Sprintf("gtp-gnb-%s", randstr(5))
+	tun, err := addTunnel(dev)
 	if err != nil {
 		log.Fatalln(err)
 		return
@@ -329,6 +331,7 @@ func (r *ran) setupN3Tunnel(ctx context.Context) {
 }
 
 func addTunnel(tunname string) (*netlink.Tuntap, error) {
+	fmt.Printf("add tunnel :%s\n", tunname)
 	tun := &netlink.Tuntap{
 		LinkAttrs: netlink.LinkAttrs{Name: tunname},
 		Mode:      netlink.TUNTAP_MODE_TUN,
@@ -347,7 +350,7 @@ func addTunnel(tunname string) (*netlink.Tuntap, error) {
 }
 
 func addIP(ifname string, ip net.IP, masklen int) (err error) {
-
+	fmt.Printf("add ip %s, ip: %v\n", ifname, ip)
 	link, err := netlink.LinkByName(ifname)
 	if err != nil {
 		return err
@@ -370,7 +373,7 @@ func addIP(ifname string, ip net.IP, masklen int) (err error) {
 			continue
 		}
 		found = true
-		//fmt.Printf("got=%v, toset=%v\n", a.IPNet.String(), netToAdd.String())
+		fmt.Printf("got=%v, toset=%v\n", a.IPNet.String(), netToAdd.String())
 		if a.IPNet.String() == netToAdd.String() {
 			return
 		}
@@ -515,6 +518,8 @@ func (r *ran) runUPlane(ctx context.Context) {
 		return
 	}
 
+	fmt.Printf("pdu address: %v\n", ue.Recv.PDUAddress.String())
+
 	dialer := net.Dialer{LocalAddr: laddr}
 	client := http.Client{
 		Transport: &http.Transport{Dial: dialer.Dial},
@@ -546,6 +551,17 @@ func (r *ran) runUPlane(ctx context.Context) {
 			rsp.StatusCode)
 	}
 	return
+}
+
+func randstr(lens int)string{
+	var str string
+	rand.Seed(time.Now().UnixNano())
+	strpol := "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	for i:=0;i<lens;i++ {
+		num := rand.Intn(len(strpol)-1)
+		str = str + strpol[num:num+1]
+	}
+	return str
 }
 
 func main() {
